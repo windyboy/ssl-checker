@@ -66,12 +66,6 @@ coverage/
 coverage.txt
 coverage.html
 
-# Binary files
-ssl-checker
-ssl-checker.exe
-ssl-checker.darwin
-ssl-checker.linux
-ssl-checker.windows 
 
 .task/
 bin/
