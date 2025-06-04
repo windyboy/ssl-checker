@@ -1,0 +1,156 @@
+version: '3'
+
+# -------- 变量 --------
+vars:
+  BINARY_NAME: ssl-checker
+  MAIN_PATH: ./cmd/ssl-checker
+  BUILD_DIR: ./bin
+
+# -------- 任务 --------
+tasks:
+  default:
+    desc: 显示可用的任务列表
+    silent: true
+    cmds:
+      - echo "🔒 SSL证书检查工具 - 可用任务"
+      - echo "================================"
+      - echo ""
+      - echo "开发任务:"
+      - echo "  task build      - 编译应用程序"
+      - echo "  task dev        - 开发模式运行"
+      - echo "  task run        - 运行编译后的程序"
+      - echo "  task test       - 运行所有测试"
+      - echo "  task test:unit  - 运行单元测试"
+      - echo "  task test:bench - 运行基准测试"
+      - echo ""
+      - echo "代码质量:"
+      - echo "  task fmt        - 格式化代码"
+      - echo "  task vet        - Go vet 检查"
+      - echo ""
+      - echo "构建发布:"
+      - echo "  task build-all  - 多平台编译"
+      - echo "  task clean      - 清理编译文件"
+      - echo ""
+      - echo "示例:"
+      - echo "  task demo       - 运行演示"
+      - echo ""
+      - echo "使用 'task --list' 查看所有任务"
+
+  build:
+    desc: 编译应用程序
+    cmds:
+      - mkdir -p {{.BUILD_DIR}}
+      - go build -o {{.BUILD_DIR}}/{{.BINARY_NAME}} {{.MAIN_PATH}}
+    sources:
+      - "**/*.go"
+      - go.mod
+      - go.sum
+    generates:
+      - "{{.BUILD_DIR}}/{{.BINARY_NAME}}"
+
+  build-all:
+    desc: 为多个平台编译
+    cmds:
+      - mkdir -p {{.BUILD_DIR}}
+      - echo "🔨 编译 Linux 版本..."
+      - GOOS=linux GOARCH=amd64 go build -o {{.BUILD_DIR}}/{{.BINARY_NAME}}-linux-amd64 {{.MAIN_PATH}}
+      - echo "🔨 编译 Windows 版本..."
+      - GOOS=windows GOARCH=amd64 go build -o {{.BUILD_DIR}}/{{.BINARY_NAME}}-windows-amd64.exe {{.MAIN_PATH}}
+      - echo "🔨 编译 macOS Intel 版本..."
+      - GOOS=darwin GOARCH=amd64 go build -o {{.BUILD_DIR}}/{{.BINARY_NAME}}-darwin-amd64 {{.MAIN_PATH}}
+      - echo "🔨 编译 macOS Apple Silicon 版本..."
+      - GOOS=darwin GOARCH=arm64 go build -o {{.BUILD_DIR}}/{{.BINARY_NAME}}-darwin-arm64 {{.MAIN_PATH}}
+      - echo "✅ 所有平台编译完成!"
+      - ls -la {{.BUILD_DIR}}/
+
+  dev:
+    desc: 开发模式运行
+    cmds:
+      - go run {{.MAIN_PATH}} {{.CLI_ARGS}}
+
+  run:
+    desc: 运行编译后的程序
+    deps: [build]
+    cmds:
+      - "{{.BUILD_DIR}}/{{.BINARY_NAME}} {{.CLI_ARGS}}"
+
+  test:
+    desc: 运行所有测试
+    cmds:
+      - task: test:unit
+      - task: test:bench
+
+  test:unit:
+    desc: 运行单元测试
+    cmds:
+      - echo "🧪 运行单元测试..."
+      - go test -v ./internal/ssl/... -ginkgo.v
+      - echo "✅ 单元测试完成"
+
+  test:bench:
+    desc: 运行基准测试
+    cmds:
+      - echo "📊 运行基准测试..."
+      - go test -bench=. -benchmem ./internal/ssl/...
+      - echo "✅ 基准测试完成"
+
+  fmt:
+    desc: 格式化代码
+    cmds:
+      - go fmt ./...
+      - echo "✅ 代码格式化完成"
+
+  vet:
+    desc: Go vet检查
+    cmds:
+      - go vet ./...
+      - echo "✅ Go vet 检查完成"
+
+  mod-tidy:
+    desc: 整理Go模块依赖
+    cmds:
+      - go mod tidy
+      - go mod verify
+      - echo "✅ 依赖整理完成"
+
+  clean:
+    desc: 清理编译文件
+    cmds:
+      - rm -rf {{.BUILD_DIR}}
+      - echo "✅ 清理完成"
+
+  deps:
+    desc: 安装开发依赖工具
+    cmds:
+      - echo "📦 安装 golangci-lint..."
+      - go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+      - echo "📦 安装 goimports..."
+      - go install golang.org/x/tools/cmd/goimports@latest
+      - echo "📦 安装 ginkgo..."
+      - go install github.com/onsi/ginkgo/v2/ginkgo@latest
+      - echo "✅ 开发依赖安装完成"
+
+  demo:
+    desc: 运行演示
+    deps: [build]
+    cmds:
+      - echo "🔍 检查 GitHub SSL证书:"
+      - "{{.BUILD_DIR}}/{{.BINARY_NAME}} -host github.com"
+      - echo ""
+      - echo "🔍 检查 Microsoft SSL证书 (详细模式):"
+      - "{{.BUILD_DIR}}/{{.BINARY_NAME}} -host microsoft.com -verbose"
+
+  check:
+    desc: 运行所有检查
+    cmds:
+      - task fmt
+      - task vet
+      - task test
+      - echo "✅ 所有检查完成"
+
+  release:
+    desc: 构建发布版本
+    cmds:
+      - task check
+      - task build-all
+      - echo "🚀 发布版本构建完成!"
